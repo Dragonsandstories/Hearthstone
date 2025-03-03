@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hearthstone Clone</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.39.0/supabase.js"></script>
+    <style>
+        :root {
+            --card-width: 200px;
+            --card-height: 280px;
+            --card-border-radius: 12px;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #0a0e14;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #1e2328;
+            border-radius: 10px;
+            width: 300px;
+            display: none;
+        }
+
+        .auth-container input, .auth-container button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .auth-container button {
+            background-color: #55a6f2;
+            color: white;
+            cursor: pointer;
+        }
+
+        .game-board {
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            margin: 20px auto;
+            background-color: #1e2328;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .player-hand, .opponent-hand, .player-board, .opponent-board {
+            display: flex;
+            justify-content: center;
+            min-height: 150px;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .player-hand, .opponent-hand {
+            background-color: #0f1318;
+        }
+
+        .player-board, .opponent-board {
+            background-color: #17191f;
+            margin: 10px 0;
+        }
+
+        /* Card styling */
+        .card {
+            width: var(--card-width);
+            height: var(--card-height);
+            background-color: #8b5e23;
+            border-radius: var(--card-border-radius);
+            margin: 0 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+        }
+
+        .card-cost {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 30px;
+            height: 30px;
+            background-color: blue;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            font-size: 18px;
+        }
+
+        .card-image {
+            height: 120px;
+            background-color: #333;
+            background-image: url('/api/placeholder/180/120');
+            background-size: cover;
+            background-position: center;
+            border-top-left-radius: var(--card-border-radius);
+            border-top-right-radius: var(--card-border-radius);
+        }
+
+        .card-name {
+            text-align: center;
+            font-weight: bold;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+        }
+
+        .card-text {
+            flex-grow: 1;
+            padding: 10px;
+            background-color: #d9c088;
+            color: black;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background-color: #8b5e23;
+        }
+
+        .card-attack, .card-health {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            font-size: 18px;
+        }
+
+        .card-attack {
+            background-color: orange;
+        }
+
+        .card-health {
+            background-color: red;
+        }
+
+        .keyword {
+            font-weight: bold;
+            color: #0077cc;
+        }
+
+        .tooltip {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: black;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            display: none;
+            z-index: 10;
+            width: 180px;
+        }
+
+        .card:hover .tooltip {
+            display: block;
+        }
+
+        .game-controls {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 0;
+        }
+
+        .deck-builder {
+            padding: 20px;
+            background-color: #1e2328;
+            border-radius: 10px;
+            margin-top: 20px;
+            width: 90%;
+            max-width: 1200px;
+            display: none;
+        }
+
+        .card-collection {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .current-deck {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #0f1318;
+            border-radius: 10px;
+            min-height: 150px;
+        }
+
+        .target-selection {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .target-selection .message {
+            background-color: #1e2328;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            flex-direction: column;
+        }
+
+        .game-over .message {
+            background-color: #1e2328;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .targetable {
+            box-shadow: 0 0 10px 5px gold;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 10px 5px gold; }
+            50% { box-shadow: 0 0 15px 8px gold; }
+            100% { box-shadow: 0 0 10px 5px gold; }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            background-color: #1e2328;
+        }
+
+        .nav-buttons button {
+            background-color: #55a6f2;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Hearthstone Clone</h1>
+        <div class="nav-buttons">
+            <button id="login-btn">Login</button>
+            <button id="deck-builder-btn" style="display: none;">Deck Builder</button>
+            <button id="play-game-btn" style="display: none;">Play Game</button>
+            <button id="logout-btn" style="display: none;">Logout</button>
+        </div>
+    </div>
+
+    <div class="auth-container" id="auth-container" style="display: none;">
+        <h2>Login / Register</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-submit">Login</button>
+        <button id="register-submit">Register</button>
+        <div id="auth-error" style="color: red; margin-top: 10px;"></div>
+    </div>
+
+    <div class="game-board" id="game-board" style="display: none;">
+        <div class="opponent-hand"></div>
+        <div class="opponent-board" id="opponent-board"></div>
+        <div class="player-board" id="player-board"></div>
+        <div class="player-hand" id="player-hand"></div>
+        
+        <div class="game-controls">
+            <button id="end-turn-btn">End Turn</button>
+            <div class="player-stats">
+                <span>Mana: <span id="player-mana">1</span>/1</span>
+                <span>HP: <span id="player-health">30</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="deck-builder" id="deck-builder">
+        <h2>Deck Builder</h2>
+        <button id="save-deck-btn">Save Deck</button>
+        <div class="card-collection" id="card-collection"></div>
+        <h3>Current Deck (<span id="deck-count">0</span>/30)</h3>
+        <div class="current-deck" id="current-deck"></div>
+    </div>
+
+    <div class="target-selection" id="target-selection">
+        <div class="message">
+            <h3>Select a target for Battlecry</h3>
+            <p>Click on a character to deal 2 damage</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <div class="message">
+            <h2 id="game-result">You Win!</h2>
+        </div>
+        <button id="play-again-btn">Play Again</button>
+    </div>
+
+    <script>
+        // Card definitions and mechanics
+        const cardDatabase = {
+            // Card ID: Card properties
+            'card001': {
+                id: 'card001',
+                name: 'Elven Archer',
+                cost: 1,
+                attack: 1,
+                health: 1,
+                image: '/api/placeholder/180/120',
+                cardType: 'minion',
+                text: 'Battlecry: Deal 2 damage to any target.',
+                keywords: ['battlecry'],
+                effects: {
+                    battlecry: function(game, playerId, targetId) {
+                        // Deal 2 damage to the target
+                        game.dealDamage(targetId, 2);
+                        console.log(`Battlecry: Dealt 2 damage to ${targetId}`);
+                    }
+                }
+            },
+            // ADD MORE CARDS HERE
+            // Example format:
+            // 'card002': {
+            //     id: 'card002',
+            //     name: 'Name',
+            //     cost: X,
+            //     attack: X,
+            //     health: X,
+            //     image: '/api/placeholder/180/120',
+            //     cardType: 'minion',
+            //     text: 'Description text',
+            //     keywords: [], // Add keywords here like: ['taunt', 'charge', etc.]
+            //     effects: {
+            //         // Add keyword effects here
+            //     }
+            // },
+        };
+
+        // Supabase initialization
+        const supabaseUrl = 'https://mvjjrvlkzynjdikelqof.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12ampydmxrenluamRpa2VscW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NjA4NDcsImV4cCI6MjA1NjUzNjg0N30.hvheq8q9FNV8AZJ0OPNw5U67b9z0GoTpGjkLwiG8VSE';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Game state
+        let gameState = {
+            currentPlayer: 'player', // 'player' or 'opponent'
+            playerHand: [],
+            opponentHand: [],
+            playerBoard: [],
+            opponentBoard: [],
+            playerHealth: 30,
+            opponentHealth: 30,
+            playerMana: 1,
+            playerMaxMana: 1,
+            opponentMana: 1,
+            opponentMaxMana: 1,
+            turn: 1,
+            selectedCard: null,
+            awaitingTarget: false,
+            currentEffect: null
+        };
+
+        // Player's deck
+        let playerDeck = [];
+        let currentDeck = [];
+
+        // DOM elements
+        const $playerHand = $('#player-hand');
+        const $playerBoard = $('#player-board');
+        const $opponentBoard = $('#opponent-board');
+        const $playerMana = $('#player-mana');
+        const $playerHealth = $('#player-health');
+        const $targetSelection = $('#target-selection');
+        const $gameOver = $('#game-over');
+        const $gameResult = $('#game-result');
+        const $authContainer = $('#auth-container');
+        const $gameBoard = $('#game-board');
+        const $deckBuilder = $('#deck-builder');
+        const $cardCollection = $('#card-collection');
+        const $currentDeck = $('#current-deck');
+        const $deckCount = $('#deck-count');
+
+        // Authentication logic
+        // Fix for login button
+        $(document).ready(function() {
+            console.log("Document ready, setting up event handlers");
+            
+            // Make sure the login button is visible
+            $('#login-btn').show();
+            
+            // Debug - log all buttons to check if they exist
+            console.log("Login button exists:", $('#login-btn').length);
+            console.log("Auth container exists:", $('#auth-container').length);
+            
+            // Use direct event attachment
+            document.getElementById('login-btn').addEventListener('click', function() {
+                console.log("Login button clicked");
+                $('#auth-container').toggle();
+            });
+            
+            document.getElementById('login-submit').addEventListener('click', async function() {
+                console.log("Login submit clicked");
+                const email = $('#email').val();
+                const password = $('#password').val();
+                
+                console.log("Attempting login with email:", email);
+                
+                try {
+                    console.log("Supabase object:", supabase);
+                    // Check if Supabase is correctly initialized
+                    if (!supabase || !supabase.auth) {
+                        throw new Error("Supabase client not properly initialized");
+                    }
+                    
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+                    
+                    if (error) throw error;
+                    console.log('Logged in:', data);
+                    onLoginSuccess();
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed: ' + (error.message || "Unknown error"));
+                }
+            });
+        });
+
+        $('#register-submit').click(async function() {
+            const email = $('#email').val();
+            const password = $('#password').val();
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) throw error;
+                console.log('Registered:', data);
+                alert('Registration successful! You can now login.');
+            } catch (error) {
+                console.error('Registration error:', error.message);
+                alert('Registration failed: ' + error.message);
+            }
+        });
+
+        $('#logout-btn').click(async function() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                onLogout();
+            } catch (error) {
+                console.error('Logout error:', error.message);
+            }
+        });
+
+        function onLoginSuccess() {
+            $authContainer.hide();
+            $('#login-btn').hide();
+            $('#deck-builder-btn').show();
+            $('#play-game-btn').show();
+            $('#logout-btn').show();
+            loadUserDecks();
+        }
+
+        function onLogout() {
+            $authContainer.hide();
+            $gameBoard.hide();
+            $deckBuilder.hide();
+            $('#login-btn').show();
+            $('#deck-builder-btn').hide();
+            $('#play-game-btn').hide();
+            $('#logout-btn').hide();
+        }
+
+        // Deck builder logic
+        $('#deck-builder-btn').click(function() {
+            $gameBoard.hide();
+            $deckBuilder.show();
+            populateCardCollection();
+        });
+
+        $('#play-game-btn').click(function() {
+            $deckBuilder.hide();
+            $gameBoard.show();
+            initGame();
+        });
+
+        function populateCardCollection() {
+            $cardCollection.empty();
+            
+            // Add all cards from the database to the collection
+            for (const cardId in cardDatabase) {
+                const card = cardDatabase[cardId];
+                const cardElement = createCardElement(card);
+                
+                cardElement.click(function() {
+                    // Add to current deck if not already 30 cards
+                    if (currentDeck.length < 30) {
+                        currentDeck.push(card);
+                        updateCurrentDeck();
+                    } else {
+                        alert('Deck is full (30 cards maximum)');
+                    }
+                });
+                
+                $cardCollection.append(cardElement);
+            }
+        }
+
+        function updateCurrentDeck() {
+            $currentDeck.empty();
+            $deckCount.text(currentDeck.length);
+            
+            currentDeck.forEach(card => {
+                const cardElement = createCardElement(card);
+                
+                cardElement.click(function() {
+                    // Remove card from deck when clicked
+                    const index = currentDeck.findIndex(c => c.id === card.id);
+                    if (index !== -1) {
+                        currentDeck.splice(index, 1);
+                        updateCurrentDeck();
+                    }
+                });
+                
+                $currentDeck.append(cardElement);
+            });
+        }
+
+        $('#save-deck-btn').click(async function() {
+            if (currentDeck.length < 30) {
+                alert('Deck must contain 30 cards');
+                return;
+            }
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Not authenticated');
+                
+                const deckData = {
+                    user_id: user.id,
+                    deck_name: 'My Deck',
+                    cards: currentDeck.map(card => card.id)
+                };
+                
+                const { data, error } = await supabase
+                    .from('decks')
+                    .insert([deckData]);
+                
+                if (error) throw error;
+                alert('Deck saved successfully!');
+            } catch (error) {
+                console.error('Save deck error:', error.message);
+                alert('Failed to save deck: ' + error.message);
+            }
+        });
+
+        async function loadUserDecks() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Not authenticated');
+                
+                const { data, error } = await supabase
+                    .from('decks')
+                    .select('*')
+                    .eq('user_id', user.id);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    // Load the first deck
+                    const deck = data[0];
+                    currentDeck = deck.cards.map(cardId => cardDatabase[cardId]);
+                    updateCurrentDeck();
+                }
+            } catch (error) {
+                console.error('Load decks error:', error.message);
+            }
+        }
+
+        // Game initialization
+        function initGame() {
+            // Reset game state
+            gameState = {
+                currentPlayer: 'player',
+                playerHand: [],
+                opponentHand: [],
+                playerBoard: [],
+                opponentBoard: [],
+                playerHealth: 30,
+                opponentHealth: 30,
+                playerMana: 1,
+                playerMaxMana: 1,
+                opponentMana: 1,
+                opponentMaxMana: 1,
+                turn: 1,
+                selectedCard: null,
+                awaitingTarget: false,
+                currentEffect: null
+            };
+            
+            // Clear the board
+            $playerHand.empty();
+            $playerBoard.empty();
+            $opponentBoard.empty();
+            
+            // Update UI
+            $playerMana.text(gameState.playerMana);
+            $playerHealth.text(gameState.playerHealth);
+            
+            // Create player deck (either use saved deck or fallback)
+            playerDeck = currentDeck.length === 30 ? [...currentDeck] : 
+                Array(30).fill().map(() => {
+                    const cardIds = Object.keys(cardDatabase);
+                    return cardDatabase[cardIds[Math.floor(Math.random() * cardIds.length)]];
+                });
+            
+            // Draw initial hand
+            for (let i = 0; i < 3; i++) {
+                drawCard('player');
+                drawCard('opponent');
+            }
+            
+            // Add opponent character
+            const opponent = {
+                id: 'opponent-hero',
+                name: 'Opponent',
+                health: gameState.opponentHealth,
+                isHero: true
+            };
+            const opponentElement = createHeroElement(opponent);
+            $opponentBoard.append(opponentElement);
+            
+            // Add player character
+            const player = {
+                id: 'player-hero',
+                name: 'You',
+                health: gameState.playerHealth,
+                isHero: true
+            };
+            const playerElement = createHeroElement(player);
+            $playerBoard.append(playerElement);
+        }
+
+        // Draw a card from the deck to hand
+        function drawCard(player) {
+            if (player === 'player') {
+                if (playerDeck.length > 0) {
+                    const card = playerDeck.pop();
+                    gameState.playerHand.push(card);
+                    const cardElement = createCardElement(card);
+                    
+                    cardElement.click(function() {
+                        playCard(card);
+                    });
+                    
+                    $playerHand.append(cardElement);
+                }
+            } else {
+                // For opponent, just create a face-down card
+                gameState.opponentHand.push({});
+                const cardBack = $('<div class="card" style="background-color: #333;"></div>');
+                $('.opponent-hand').append(cardBack);
+            }
+        }
+
+        // Play a card from hand
+        function playCard(card) {
+            // Check if it's player's turn
+            if (gameState.currentPlayer !== 'player') return;
+            
+            // Check if player has enough mana
+            if (card.cost > gameState.playerMana) {
+                alert('Not enough mana!');
+                return;
+            }
+            
+            // Remove card from hand
+            const handIndex = gameState.playerHand.findIndex(c => c.id === card.id);
+            if (handIndex !== -1) {
+                gameState.playerHand.splice(handIndex, 1);
+                gameState.playerMana -= card.cost;
+                $playerMana.text(gameState.playerMana);
+                
+                // Remove card from hand display
+                $('#player-hand').children().eq(handIndex).remove();
+                
+                // Place minion on board
+                const boardCard = {...card, currentHealth: card.health};
+                gameState.playerBoard.push(boardCard);
+                
+                const cardElement = createCardElement(boardCard);
+                cardElement.click(function() {
+                    // For attacking with minions
+                    selectAttacker(boardCard);
+                });
+                
+                $playerBoard.append(cardElement);
+                
+                // Check for battlecry or other effects
+                if (card.keywords && card.keywords.includes('battlecry')) {
+                    // Trigger battlecry target selection
+                    gameState.awaitingTarget = true;
+                    gameState.currentEffect = {
+                        type: 'battlecry',
+                        cardId: card.id,
+                        sourceId: boardCard.id
+                    };
+                    
+                    $targetSelection.css('display', 'flex');
+                    
+                    // Make all valid targets selectable
+                    makeTargetsSelectable();
+                }
+                
+                // ADD OTHER CARD MECHANICS HERE
+                // This is where you would implement other mechanics like:
+                // - Charge (can attack immediately)
+                // - Taunt (must be attacked first)
+                // - Deathrattle (effect triggers when card dies)
+                // - etc.
+            }
+        }
+
+        // Make valid targets selectable for battlecry effects
+        function makeTargetsSelectable() {
+            // For battlecry that can target any character
+            $('.player-board .card, .opponent-board .card').addClass('targetable');
+            
+            $('.targetable').click(function() {
+                const targetId = $(this).data('id');
+                
+                if (gameState.awaitingTarget && gameState.currentEffect) {
+                    if (gameState.currentEffect.type === 'battlecry') {
+                        // Execute the battlecry effect
+                        const sourceCard = cardDatabase[gameState.currentEffect.cardId];
+                        if (sourceCard && sourceCard.effects && sourceCard.effects.battlecry) {
+                            sourceCard.effects.battlecry(gameState, 'player', targetId);
+                        }
+                    }
+                    
+                    // Reset targeting
+                    gameState.awaitingTarget = false;
+                    gameState.currentEffect = null;
+                    $targetSelection.hide();
+                    $('.targetable').removeClass('targetable');
+                }
+            });
+        }
+
+        // Select a minion to attack with
+        function selectAttacker(card) {
+            // Only allow attacking if it's the player's turn
+            if (gameState.currentPlayer !== 'player') return;
+            
+            // Clear any previous selection
+            $('.card').removeClass('selected');
+            
+            // Select this card
+            $(`.card[data-id="${card.id}"]`).addClass('selected');
+            
+            // Make opponent's minions targetable
+            $('.opponent-board .card').addClass('targetable');
+            
+            // Handle target selection
+            $('.targetable').click(function() {
+                const targetId = $(this).data('id');
+                attack(card.id, targetId);
+                
+                // Reset targeting
+                $('.card').removeClass('selected');
+                $('.card').removeClass('targetable');
+            });
+        }
+
+        // Execute an attack
+        function attack(attackerId, defenderId) {
+            const attacker = gameState.playerBoard.find(c => c.id === attackerId);
+            let defender;
+            
+            if (defenderId === 'opponent-hero') {
+                defender = {
+                    id: 'opponent-hero',
+                    health: gameState.opponentHealth,
+                    attack: 0,
+                    isHero: true
+                };
+            } else {
+                defender = gameState.opponentBoard.find(c => c.id === defenderId);
+            }
+            
+            if (attacker && defender) {
+                // Deal damage to defender
+                if (defender.isHero) {
+                    gameState.opponentHealth -= attacker.attack;
+                    updateHeroHealth('opponent', gameState.opponentHealth);
+                    
+                    // Check for game over
+                    if (gameState.opponentHealth <= 0) {
+                        endGame('win');
+                    }
+                } else {
+                    defender.currentHealth -= attacker.attack;
+                    updateMinionHealth(defender);
+                    
+                    // Check if defender died
+                    if (defender.currentHealth <= 0) {
+                        removeMinionFromBoard('opponent', defender.id);
+                    }
+                }
+                
+                // If defender is a minion, attacker also takes damage
+                if (!defender.isHero) {
+                    attacker.currentHealth -= defender.attack;
+                    updateMinionHealth(attacker);
+                    
+                    // Check if attacker died
+                    if (attacker.currentHealth <= 0) {
+                        removeMinionFromBoard('player', attacker.id);
+                    }
+                }
+            }
+        }
+
+        // Update minion health display
+        function updateMinionHealth(minion) {
+            $(`.card[data-id="${minion.id}"] .card-health`).text(minion.currentHealth);
+        }
+
+        // Update hero health display
+        function updateHeroHealth(player, health) {
+            if (player === 'player') {
+                $('#player-health').text(health);
+            }
+        }
+
+        // Remove a minion from the board when it dies
+        function removeMinionFromBoard(player, minionId) {
+            if (player === 'player') {
+                gameState.playerBoard = gameState.playerBoard.filter(c => c.id !== minionId);
+            } else {
+                gameState.opponentBoard = gameState.opponentBoard.filter(c => c.id !== minionId);
+            }
+            
+            $(`.card[data-id="${minionId}"]`).remove();
+            
+            // ADD DEATHRATTLE EFFECTS HERE
+            // This is where you would implement deathrattle effects
+        }
+
+        // Deal damage to a target (used by spells, battlecries, etc.)
+        function dealDamage(targetId, amount) {
+            // Find the target
+            let target;
+            
+            if (targetId === 'player-hero') {
+                gameState.playerHealth -= amount;
+                updateHeroHealth('player', gameState.playerHealth);
+                
+                // Check for game over
+                if (gameState.playerHealth <= 0) {
+                    endGame('lose');
+                }
+                return;
+            }
+            
+            if (targetId === 'opponent-hero') {
+                gameState.opponentHealth -= amount;
+                updateHeroHealth('opponent', gameState.opponentHealth);
+                
+                // Check for game over
+                if (gameState.opponentHealth <= 0) {
+                    endGame('win');
+                }
+                return;
+            }
+            
+            // Check player board
+            target = gameState.playerBoard.find(c => c.id === targetId);
+            if (target) {
+                target.currentHealth -= amount;
+                updateMinionHealth(target);
+                
+                // Check if minion died
+                if (target.currentHealth <= 0) {
+                    removeMinionFromBoard('player', target.id);
+                }
+                return;
+            }
+            
+            // Check opponent board
+            target = gameState.opponentBoard.find(c => c.id === targetId);
+            if (target) {
+                target.currentHealth -= amount;
+                updateMinionHealth(target);
+                
+                // Check if minion died
+                if (target.currentHealth <= 0) {
+                    removeMinionFromBoard('opponent', target.id);
+                }
+                return;
+            }
+        }
+
+        // End turn
+        $('#end-turn-btn').click(function() {
+            if (gameState.currentPlayer === 'player') {
+                // Switch to opponent turn
+                gameState.currentPlayer = 'opponent';
+                
+                // Simulate opponent turn
+                setTimeout(() => {
+                    opponentTurn();
+                }, 1000);
+            }
+        });
+
+        // Simulate opponent turn
+        function opponentTurn() {
+            // Increase mana for next turn
+            gameState.opponentMaxMana = Math.min(gameState.opponentMaxMana + 1, 10);
+            gameState.opponentMana = gameState.opponentMaxMana;
+            
+            // Draw a card
+            drawCard('opponent');
+            
+            // Simulate playing cards and attacking
+            simulateOpponentActions();
+            
+            // End opponent turn
+            setTimeout(() => {
+                // Switch back to player turn
+                gameState.currentPlayer = 'player';
+                
+                // Increase player mana for next turn
+                gameState.playerMaxMana = Math.min(gameState.playerMaxMana + 1, 10);
+                gameState.playerMana = gameState.playerMaxMana;
+                $playerMana.text(gameState.playerMana);
+                
+                // Draw a card for player
+                drawCard('player');
+                
+                gameState.turn++;
+            }, 1000);
+        }
+
+        // Simple AI for opponent actions
+        function simulateOpponentActions() {
+            // Play a random card
+            if (gameState.opponentHand.length > 0 && gameState.opponentMana > 0) {
+                // Create a simple minion
+                const minion = {
+                    id: 'opponent-minion-' + Date.now(),
+                    name: 'Enemy Minion',
+                    cost: Math.min(gameState.opponentMana, 3),
+                    attack: Math.floor(Math.random() * 3) + 1,
+                    health: Math.floor(Math.random() * 4) + 1,
+                    currentHealth: Math.floor(Math.random() * 4) + 1,
+                    cardType: 'minion'
+                };
+                
+                gameState.opponentMana -= minion.cost;
+                gameState.opponentBoard.push(minion);
+                gameState.opponentHand.pop();
+                
+                // Remove a card from opponent's hand display
+                $('.opponent-hand').children().last().remove();
+                
+                // Add minion to board
+                const minionElement = createCardElement(minion);
+                $opponentBoard.append(minionElement);
+            }
+            
+            // Attack with minions
+            setTimeout(() => {
+                gameState.opponentBoard.forEach(minion => {
+                    // Choose a random target
+                    const possibleTargets = gameState.playerBoard.length > 0 
+                        ? gameState.playerBoard 
+                        : [{ id: 'player-hero', isHero: true }];
+                    
+                    const target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+                    
+                    // Execute attack
+                    if (target.isHero) {
+                        gameState.playerHealth -= minion.attack;
+                        $playerHealth.text(gameState.playerHealth);
+                        
+                        // Check for game over
+                        if (gameState.playerHealth <= 0) {
+                            endGame('lose');
+                        }
+                    } else {
+                        // Attack a minion
+                        target.currentHealth -= minion.attack;
+                        updateMinionHealth(target);
+                        
+                        // Defender counterattacks
+                        minion.currentHealth -= target.attack;
+                        updateMinionHealth(minion);
+                        
+                        // Check if minions died
+                        if (target.currentHealth <= 0) {
+                            removeMinionFromBoard('player', target.id);
+                        }
+                        
+                        if (minion.currentHealth <= 0) {
+                            removeMinionFromBoard('opponent', minion.id);
+                        }
+                    }
+                });
+            }, 500);
+        }
+
+        // End the game
+        function endGame(result) {
+            $gameResult.text(result === 'win' ? 'You Win!' : 'You Lose!');
+            $gameOver.css('display', 'flex');
+        }
+
+        // Play again
+        $('#play-again-btn').click(function() {
+            $gameOver.hide();
+            initGame();
+        });
+
+        // Helper function to create card elements
+        function createCardElement(card) {
+            const cardId = card.id || 'card-' + Date.now();
+            
+            const cardElement = $(`
+                <div class="card" data-id="${cardId}">
+                    <div class="card-cost">${card.cost || 0}</div>
+                    <div class="card-image"></div>
+                    <div class="card-name">${card.name || 'Card'}</div>
+                    <div class="card-text">
+                        ${formatCardText(card.text || '')}
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-attack">${card.attack || 0}</div>
+                        <div class="card-health">${card.currentHealth || card.health || 0}</div>
+                    </div>
+                </div>
+            `);
+            
+            return cardElement;
+        }
+
+        // Helper function to create hero elements
+        function createHeroElement(hero) {
+            const heroElement = $(`
+                <div class="card" data-id="${hero.id}">
+                    <div class="card-image"></div>
+                    <div class="card-name">${hero.name || 'Hero'}</div>
+                    <div class="card-text">
+                        Hero
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-health">${hero.health || 30}</div>
+                    </div>
+                </div>
+            `);
+            
+            return heroElement;
+        }
+
+        // Format card text to highlight keywords
+        function formatCardText(text) {
+            // Replace keywords with styled spans
+            return text.replace(/(Battlecry|Deathrattle|Taunt|Divine Shield|Charge):/g, 
+                '<span class="keyword">$1:</span>');
+        }
+
+        // Initialize the game when ready
+        $('#login-btn').show();
+        
+        // Check if Supabase is properly loaded
+        if (typeof window.supabase === 'undefined') {
+            console.error("Supabase library not loaded correctly. Make sure the CDN script is working.");
+            alert("Error: The authentication system failed to load. Please check your internet connection and refresh the page.");
+        } else {
+            console.log("Supabase library loaded successfully");
+        }
+    </script>
+</body>
+</html>
